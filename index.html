@@ -244,9 +244,10 @@ body{background:var(--bg);color:var(--t2);font-family:var(--sans);min-height:100
   </div>
   <div class="status-bar" id="statusBar"></div>
   <div class="tabs-row">
-    <button class="tab-btn active" id="tab-btn-overview" onclick="switchTab('overview')">Overview</button>
+    <button class="tab-btn active" id="tab-btn-overview" onclick="switchTab('overview')">Saldo</button>
     <button class="tab-btn" id="tab-btn-mn" onclick="switchTab('mn')"><span class="person-badge mn-badge" style="font-size:9px;padding:1px 7px">MN</span>Michiel</button>
     <button class="tab-btn" id="tab-btn-as" onclick="switchTab('as')"><span class="person-badge as-badge" style="font-size:9px;padding:1px 7px">AS</span>Alexandra</button>
+    <button class="tab-btn" id="tab-btn-jaar" onclick="switchTab('jaar')">Jaarruimte (fiscaal)</button>
   </div>
 </div>
 
@@ -266,6 +267,10 @@ body{background:var(--bg);color:var(--t2);font-family:var(--sans);min-height:100
     <div class="panel-body" id="saldoTable"></div>
   </div>
 
+</div>
+
+<!-- JAARRUIMTE (fiscaal) -->
+<div class="tab-panel" id="tab-jaar">
   <div class="sdiv">Jaarruimte · contribution room overview</div>
   <div class="kpi-grid" id="ovKpis"></div>
   <div class="chart-row">
@@ -366,6 +371,27 @@ const SALDO_DEFAULT_DATA = {
     'NL73BNDA0100009152': [131396],
     'NL20BNDA0972686029': [44928],
   },
+};
+
+// Fund-level breakdown per IBAN as of latest BND statement (May '26)
+const SALDO_FUNDS = {
+  'NL69BNDA0100009224': [
+    { fund: 'BND Wereld Indexfonds Hedged',     type: 'Aandelen',   aantal: 7557.70, koers: 39.36, waarde: 297456 },
+    { fund: 'BND Euro Staatsobligatie Indexfonds', type: 'Obligaties', aantal: 5840.79, koers: 11.70, waarde: 68356 },
+  ],
+  'NL73BNDA0100009152': [
+    { fund: 'BND Wereld Indexfonds Hedged',     type: 'Aandelen',   aantal: 2351.23, koers: 39.36, waarde: 92540 },
+    { fund: 'BND Euro Staatsobligatie Indexfonds', type: 'Obligaties', aantal: 3320.12, koers: 11.70, waarde: 38856 },
+  ],
+  'NL20BNDA0972686029': [
+    { fund: 'BND Wereld Indexfonds Hedged',     type: 'Aandelen',   aantal:  968.58, koers: 39.36, waarde: 38121 },
+    { fund: 'BND Euro Staatsobligatie Indexfonds', type: 'Obligaties', aantal:  333.70, koers:  9.72, waarde:  3244 },
+    { fund: 'BND Euro Investment Grade Obligatie Indexfonds', type: 'Obligaties', aantal: 339.14, koers: 10.50, waarde: 3562 },
+  ],
+};
+const FUND_COLORS = {
+  'Aandelen':   '#4d9ef8',
+  'Obligaties': '#3ecfcf',
 };
 
 let SALDO_DATA;
@@ -911,6 +937,18 @@ function buildSaldoTable(){
       }).join('')}
       <td style="padding:5px 9px;text-align:right;font-family:var(--mono);color:var(--cyan, #3ecfcf)">${proj.verwacht ? fmtE(proj.verwacht) : '—'}</td>
     </tr>`;
+    // Fund-level breakdown rows under this IBAN
+    const funds = SALDO_FUNDS[c.iban] || [];
+    funds.forEach(f => {
+      const fcolor = FUND_COLORS[f.type] || '#666';
+      const pct = SALDO_DATA.saldi[c.iban]?.[li] ? (f.waarde / SALDO_DATA.saldi[c.iban][li] * 100).toFixed(0) : '—';
+      html += `<tr style="background:rgba(10,28,54,.4)">
+        <td style="padding:3px 9px 3px 28px;font-size:10px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${fcolor};margin-right:6px"></span><span style="color:var(--t3, #4a6880)">${f.fund}</span> <span style="font-family:var(--mono);font-size:8px;color:var(--t4);margin-left:4px">${f.type} · ${f.aantal.toLocaleString('nl-NL')} units · €${f.koers}</span></td>
+        <td style="padding:3px 9px;font-size:10px;color:var(--t4, #506880);font-family:var(--mono)">${pct}%</td>
+        <td style="padding:3px 9px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--t2, #8aa8c8)" colspan="${SALDO_DATA.dates.length}">${fmtE(f.waarde)}</td>
+        <td style="padding:3px 9px"></td>
+      </tr>`;
+    });
   });
   // totals
   html += `<tr style="border-top:2px solid var(--b2, #243d63);font-weight:700">
